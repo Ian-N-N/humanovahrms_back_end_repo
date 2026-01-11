@@ -1,0 +1,18 @@
+Starting Verification...
+Testing connectivity to http://127.0.0.1:5000/api...
+
+[1] Attempting to Register user: verification_eb759563@example.com
+✅ Registration Successful
+
+[2] Attempting to Login...
+✅ Login Successful. Token received.
+   User Name: Verification User
+   User Role: Employee
+
+[3] Attempting to fetch Protected Resource (/employees)...
+❌ Protected Resource Access Failed: 403 - {
+    "msg": "Admins only!"
+}
+
+
+⚠️ BACKEND CONNECTION FAILED.
