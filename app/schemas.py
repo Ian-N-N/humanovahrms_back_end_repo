@@ -16,6 +16,10 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         model = User
         load_instance = True
         load_only = ('password_hash',)
+    
+    role = ma.Nested(RoleSchema)
+    # Expose 'username' as 'name' for frontend compatibility
+    name = ma.String(attribute='username', dump_only=True)
 
 class EmployeeSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
