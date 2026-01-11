@@ -14,11 +14,19 @@ class Register(Resource):
         if User.query.filter_by(email=data['email']).first():
             return {'message': 'User already exists'}, 400
         
-        # Default role assignment logic (simplistic)
-        role = Role.query.filter_by(name='Employee').first()
+        # Determine role from request
+        requested_role = data.get('role', 'employee').lower()
+        role_map = {
+            'hr': 'HR Manager',
+            'admin': 'Admin',
+            'employee': 'Employee'
+        }
+        role_name = role_map.get(requested_role, 'Employee')
+
+        role = Role.query.filter_by(name=role_name).first()
         if not role:
-            # Create default roles if not exist (quick fix for dev)
-            role = Role(name='Employee', permissions={})
+            # Create role if it doesn't exist
+            role = Role(name=role_name, permissions={})
             db.session.add(role)
             db.session.commit()
 
