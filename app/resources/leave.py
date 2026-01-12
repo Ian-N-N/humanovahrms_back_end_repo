@@ -5,6 +5,7 @@ from app.models import LeaveRequest, Employee
 from app import db
 from app.schemas import LeaveRequestSchema
 from app.middleware.auth import hr_required
+from datetime import datetime
 
 leave_schema = LeaveRequestSchema()
 leave_list_schema = LeaveRequestSchema(many=True)
@@ -47,7 +48,7 @@ class LeaveApprove(Resource):
         leave = LeaveRequest.query.get_or_404(id)
         leave.status = 'approved'
         leave.approved_by = get_jwt_identity()
-        # leave.approval_date = datetime.utcnow() # Add import if needed
+        leave.approval_date = datetime.utcnow()
         db.session.commit()
         return leave_schema.dump(leave), 200
 
@@ -58,5 +59,17 @@ class LeaveReject(Resource):
         leave = LeaveRequest.query.get_or_404(id)
         leave.status = 'rejected'
         leave.approved_by = get_jwt_identity()
+        leave.approval_date = datetime.utcnow()
         db.session.commit()
         return leave_schema.dump(leave), 200
+
+class LeaveHistory(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        employee = Employee.query.filter_by(user_id=user_id).first()
+        if not employee:
+            return {'message': 'Employee record not found'}, 404
+            
+        leaves = LeaveRequest.query.filter_by(employee_id=employee.id).order_by(LeaveRequest.created_at.desc()).all()
+        return leave_list_schema.dump(leaves), 200

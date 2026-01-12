@@ -7,7 +7,17 @@ from flask_cors import CORS
 from flask_marshmallow import Marshmallow
 from .config import Config
 
-db = SQLAlchemy()
+from sqlalchemy import MetaData
+
+naming_convention = {
+    "ix": 'ix_%(column_0_label)s',
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+
+db = SQLAlchemy(metadata=MetaData(naming_convention=naming_convention))
 migrate = Migrate()
 jwt = JWTManager()
 ma = Marshmallow()
@@ -18,7 +28,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate.init_app(app, db, render_as_batch=True)
     jwt.init_app(app)
     ma.init_app(app)
     cors.init_app(app)
@@ -39,17 +49,18 @@ def create_app(config_class=Config):
         return jsonify({'message': str(e)}), 500
 
     # Register Resources
-    from app.resources.auth import Register, Login
+    from app.resources.auth import Register, Login, UserList
     from app.resources.employees import EmployeeList, EmployeeResource
     from app.resources.departments import DepartmentList, DepartmentResource
-    from app.resources.attendance import AttendanceList, ClockIn, ClockOut
-    from app.resources.leave import LeaveList, LeaveResource, LeaveApprove, LeaveReject
-    from app.resources.payroll import PayrollList, PayrollResource
+    from app.resources.attendance import AttendanceList, ClockIn, ClockOut, PersonalAttendanceHistory
+    from app.resources.leave import LeaveList, LeaveResource, LeaveApprove, LeaveReject, LeaveHistory
+    from app.resources.payroll import PayrollList, PayrollResource, PayrollCycles, PayrollReports
     from app.resources.analytics import DashboardStats
     from app.resources.notifications import NotificationList, NotificationResource
 
     api.add_resource(Register, '/api/auth/register')
     api.add_resource(Login, '/api/auth/login')
+    api.add_resource(UserList, '/api/users')
     
     api.add_resource(EmployeeList, '/api/employees')
     api.add_resource(EmployeeResource, '/api/employees/<int:id>')
@@ -60,14 +71,18 @@ def create_app(config_class=Config):
     api.add_resource(AttendanceList, '/api/attendance')
     api.add_resource(ClockIn, '/api/attendance/clock-in')
     api.add_resource(ClockOut, '/api/attendance/clock-out')
+    api.add_resource(PersonalAttendanceHistory, '/api/attendance/history')
     
     api.add_resource(LeaveList, '/api/leave')
     api.add_resource(LeaveResource, '/api/leave/<int:id>')
     api.add_resource(LeaveApprove, '/api/leave/<int:id>/approve')
     api.add_resource(LeaveReject, '/api/leave/<int:id>/reject')
+    api.add_resource(LeaveHistory, '/api/leave/history')
     
     api.add_resource(PayrollList, '/api/payroll')
     api.add_resource(PayrollResource, '/api/payroll/<int:id>')
+    api.add_resource(PayrollCycles, '/api/payroll/cycles')
+    api.add_resource(PayrollReports, '/api/payroll/reports')
     
     api.add_resource(DashboardStats, '/api/analytics/dashboard')
     

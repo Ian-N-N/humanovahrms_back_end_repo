@@ -37,7 +37,7 @@ class ClockIn(Resource):
 
         attendance = Attendance(
             employee_id=employee.id,
-            clock_in=datetime.utcnow(),
+            clock_in=datetime.now(),
             date=today,
             status='present' # Logic to determine late/present
         )
@@ -58,6 +58,17 @@ class ClockOut(Resource):
         if not attendance:
              return {'message': 'No clock-in record found for today'}, 400
         
-        attendance.clock_out = datetime.utcnow()
+        attendance.clock_out = datetime.now()
         db.session.commit()
         return attendance_schema.dump(attendance), 200
+
+class PersonalAttendanceHistory(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        employee = Employee.query.filter_by(user_id=user_id).first()
+        if not employee:
+            return {'message': 'Employee record not found'}, 404
+            
+        records = Attendance.query.filter_by(employee_id=employee.id).order_by(Attendance.date.desc()).all()
+        return attendance_list_schema.dump(records), 200

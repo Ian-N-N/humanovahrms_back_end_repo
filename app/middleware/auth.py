@@ -10,7 +10,6 @@ def role_required(*roles):
             verify_jwt_in_request()
             claims = get_jwt()
             user_role = claims.get('role')
-
             if user_role not in roles:
                 return {'msg': 'Admins only!'}, 403
             return fn(*args, **kwargs)

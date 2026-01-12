@@ -27,12 +27,43 @@ class EmployeeList(Resource):
         }, 200
 
     @jwt_required()
-    @admin_required
+    @hr_required
     def post(self):
         data = request.get_json()
-        # Basic validation and creation logic would go here
-        # Note: Needs user_id linking logic
-        new_employee = Employee(**data)
+        
+        # Cast data types correctly
+        from datetime import datetime
+        hire_date_str = data.get('hire_date') or data.get('join_date')
+        hire_date = None
+        if hire_date_str:
+            try:
+                # Handle YYYY-MM-DD
+                hire_date = datetime.strptime(hire_date_str.split('T')[0], '%Y-%m-%d').date()
+            except (ValueError, IndexError):
+                pass
+
+        try:
+            basic_salary = float(data.get('basic_salary')) if data.get('basic_salary') else 0.0
+        except ValueError:
+            basic_salary = 0.0
+
+        mapped_data = {
+            'first_name': data.get('first_name'),
+            'last_name': data.get('last_name'),
+            'phone_number': data.get('phone_number') or data.get('phone'),
+            'profile_photo_url': data.get('profile_photo_url'),
+            'department_id': data.get('department_id'),
+            'supervisor_id': data.get('supervisor_id'),
+            'job_title': data.get('job_title'),
+            'basic_salary': basic_salary,
+            'hire_date': hire_date,
+            'user_id': data.get('user_id')
+        }
+        
+        # Remove None values
+        mapped_data = {k: v for k, v in mapped_data.items() if v is not None}
+        
+        new_employee = Employee(**mapped_data)
         db.session.add(new_employee)
         db.session.commit()
         return employee_schema.dump(new_employee), 201

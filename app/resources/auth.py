@@ -7,6 +7,13 @@ from app import db
 from app.schemas import UserSchema
 
 user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+class UserList(Resource):
+    @jwt_required()
+    def get(self):
+        users = User.query.all()
+        return users_schema.dump(users), 200
 
 class Register(Resource):
     def post(self):
@@ -32,8 +39,8 @@ class Register(Resource):
 
         new_user = User(
             email=data['email'],
-            # Map 'name' from request to 'username' in model
-            username=data.get('name', ''), 
+            # Map 'username' from request, fallback to 'name'
+            username=data.get('username') or data.get('name', ''), 
             password_hash=generate_password_hash(data['password']),
             role_id=role.id
         )

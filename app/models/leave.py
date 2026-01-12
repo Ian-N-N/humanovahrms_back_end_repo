@@ -16,5 +16,6 @@ class LeaveRequest(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
     def __repr__(self):
         return f'<LeaveRequest {self.employee_id} {self.status}>'

@@ -1,11 +1,25 @@
+# Environment variables
 .env
+
+# Python specific
+__pycache__/
+*.pyc
 /venv/
-__pycache__/
-*.pyc
-instance/
 venv/
-.env
+
+# Database
 instance/
-/venv
-__pycache__/
-*.pyc
+*.db
+
+# Testing and Debug Scripts
+verify_*.py
+debug_*.py
+test_*.py
+inspect_*.py
+check_*.py
+reset_db.py
+
+# Logs
+*.log
+verification_output.txt
+debug_output.txt
