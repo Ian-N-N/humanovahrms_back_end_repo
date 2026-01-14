@@ -23,6 +23,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
     role = ma.Nested(RoleSchema)
     # Expose 'username' as 'name' for frontend compatibility
     name = ma.String(attribute='username', dump_only=True)
+    employee = ma.Nested('EmployeeSchema', exclude=['user_id'], dump_only=True)
 
 class EmployeeSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -32,6 +33,7 @@ class EmployeeSchema(ma.SQLAlchemyAutoSchema):
     
     hire_date = ma.Date(format='%Y-%m-%d')
     basic_salary = ma.Decimal(as_string=True)
+    leave_balance = ma.Integer()
     created_at = ma.DateTime(format='iso')
     updated_at = ma.DateTime(format='iso')
     name = ma.Method("get_name", dump_only=True)
@@ -46,7 +48,9 @@ class AttendanceSchema(ma.SQLAlchemyAutoSchema):
         include_fk = True
     
     clock_in_time = ma.Method("get_clock_in_time")
+    clock_in_time = ma.Method("get_clock_in_time")
     clock_out_time = ma.Method("get_clock_out_time")
+    hours_worked = ma.Float()
 
     def get_clock_in_time(self, obj):
         return obj.clock_in.strftime("%I:%M %p") if obj.clock_in else "--:--"
@@ -85,6 +89,7 @@ class PayrollSchema(ma.SQLAlchemyAutoSchema):
         include_fk = True
     
     cycle = ma.Nested(PayrollCycleSchema, dump_only=True)
+    employee = ma.Nested(EmployeeSchema, only=["id", "name"], dump_only=True)
     basic_salary = ma.Decimal(as_string=True)
     gross_salary = ma.Decimal(as_string=True)
     tax_paid = ma.Decimal(as_string=True)

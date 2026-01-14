@@ -9,3 +9,10 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt_secret')
     PROPAGATE_EXCEPTIONS = True
+    from datetime import timedelta
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=1)
+    
+    # Cloudinary Configuration (Placeholder)
+    CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', 'your_cloud_name')
+    CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY', 'your_api_key')
+    CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET', 'your_api_secret')

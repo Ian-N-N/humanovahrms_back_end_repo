@@ -59,6 +59,12 @@ class ClockOut(Resource):
              return {'message': 'No clock-in record found for today'}, 400
         
         attendance.clock_out = datetime.now()
+        
+        # Calculate hours worked
+        if attendance.clock_in:
+            duration = attendance.clock_out - attendance.clock_in
+            attendance.hours_worked = round(duration.total_seconds() / 3600, 2)
+            
         db.session.commit()
         return attendance_schema.dump(attendance), 200
 

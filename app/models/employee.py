@@ -15,6 +15,8 @@ class Employee(db.Model):
     job_title = db.Column(db.String(100))
     basic_salary = db.Column(db.Numeric(10, 2))
     hire_date = db.Column(db.Date)
+    status = db.Column(db.String(20), default='Active') 
+    leave_balance = db.Column(db.Integer, default=21)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

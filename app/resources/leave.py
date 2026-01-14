@@ -27,8 +27,8 @@ class LeaveList(Resource):
         leave = LeaveRequest(
             employee_id=employee.id,
             leave_type=data['leave_type'],
-            start_date=data['start_date'],
-            end_date=data['end_date'],
+            start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
+            end_date=datetime.strptime(data['end_date'], '%Y-%m-%d').date(),
             reason=data.get('reason')
         )
         db.session.add(leave)
@@ -46,6 +46,16 @@ class LeaveApprove(Resource):
     @hr_required
     def put(self, id):
         leave = LeaveRequest.query.get_or_404(id)
+        
+        # Determine duration
+        days_count = (leave.end_date - leave.start_date).days + 1
+        
+        employee = Employee.query.get(leave.employee_id)
+        if employee and days_count > 0:
+             # Subtract from balance
+             current_balance = employee.leave_balance if employee.leave_balance is not None else 21
+             employee.leave_balance = current_balance - days_count
+
         leave.status = 'approved'
         leave.approved_by = get_jwt_identity()
         leave.approval_date = datetime.utcnow()
