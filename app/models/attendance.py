@@ -9,6 +9,7 @@ class Attendance(db.Model):
     clock_in = db.Column(db.DateTime, nullable=False)
     clock_out = db.Column(db.DateTime)
     date = db.Column(db.Date, nullable=False)
+    hours_worked = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(20), nullable=False) # present, late, absent
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

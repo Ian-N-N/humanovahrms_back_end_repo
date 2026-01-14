@@ -29,11 +29,22 @@ class EmployeeList(Resource):
     @jwt_required()
     @hr_required
     def post(self):
-        data = request.get_json()
+        # Log Content-Type for debugging
+        current_app.logger.info(f"POST Employee - Content-Type: {request.content_type}")
+        
+        # Handle Multipart Form Data (File Uploads)
+        if request.mimetype == 'multipart/form-data':
+             data = request.form.to_dict()
+             file_storage = request.files.get('image')
+             current_app.logger.info(f"Multipart detected. Files: {list(request.files.keys())}. Form data keys: {list(data.keys())}")
+        else:
+             data = request.get_json() or {}
+             file_storage = None
+             current_app.logger.info("JSON request detected.")
         
         # Cast data types correctly
         from datetime import datetime
-        hire_date_str = data.get('hire_date') or data.get('join_date')
+        hire_date_str = data.get('hire_date') or data.get('join_date') 
         hire_date = None
         if hire_date_str:
             try:
@@ -47,11 +58,17 @@ class EmployeeList(Resource):
         except ValueError:
             basic_salary = 0.0
 
+        # Handle Image Upload
+        profile_photo_url = data.get('profile_photo_url')
+        if file_storage:
+            from app.utils.cloudinary_utils import upload_image
+            profile_photo_url = upload_image(file_storage)
+
         mapped_data = {
             'first_name': data.get('first_name'),
             'last_name': data.get('last_name'),
             'phone_number': data.get('phone_number') or data.get('phone'),
-            'profile_photo_url': data.get('profile_photo_url'),
+            'profile_photo_url': profile_photo_url,
             'department_id': data.get('department_id'),
             'supervisor_id': data.get('supervisor_id'),
             'job_title': data.get('job_title'),
@@ -75,11 +92,97 @@ class EmployeeResource(Resource):
         return employee_schema.dump(employee), 200
 
     @jwt_required()
+    @jwt_required()
     @hr_required
     def put(self, id):
+        try:
+            employee = Employee.query.get_or_404(id)
+            
+            # Log for debugging
+            current_app.logger.info(f"PUT Employee {id} - Content-Type: {request.content_type}")
+
+            # Handle Multipart Form Data (File Uploads) or JSON
+            if request.mimetype == 'multipart/form-data' or request.files:
+                 data = request.form.to_dict()
+                 file_storage = request.files.get('image')
+                 current_app.logger.info(f"Multipart/Files detected. Files: {list(request.files.keys())}")
+            else:
+                 data = request.get_json(silent=True) or {}
+                 file_storage = None
+                 current_app.logger.info("JSON or other request detected.")
+
+            # Explicit Mapping
+            if 'name' in data:
+                parts = data['name'].strip().split(' ', 1)
+                employee.first_name = parts[0]
+                if len(parts) > 1:
+                    employee.last_name = parts[1]
+            
+            if 'phone' in data:
+                employee.phone_number = data['phone']
+                
+            if 'status' in data:
+                employee.status = data['status']
+                
+            if 'job_title' in data:
+                employee.job_title = data['job_title']
+
+            if 'basic_salary' in data:
+                try:
+                    employee.basic_salary = float(data['basic_salary'])
+                except (ValueError, TypeError):
+                    pass
+            
+            # Handle Image Upload for Update
+            if file_storage:
+                 from app.utils.cloudinary_utils import upload_image
+                 employee.profile_photo_url = upload_image(file_storage)
+
+            # Handle Department (Lookup by name if string provided)
+            if 'department' in data:
+                 from app.models import Department
+                 dept_name = data['department']
+                 dept = Department.query.filter_by(name=dept_name).first()
+                 if dept:
+                     employee.department_id = dept.id
+
+            # Pass through any other matching keys that are safe
+            safe_keys = ['profile_photo_url', 'hire_date']
+            for key in safe_keys:
+                if key in data:
+                    setattr(employee, key, data[key])
+
+            # NOTE: Email and Role are on User model, not Employee. 
+            if employee.user_id and ('email' in data or 'role' in data):
+                from app.models import User, Role
+                user = User.query.get(employee.user_id)
+                if user:
+                    if 'email' in data:
+                        user.email = data['email']
+                    if 'role' in data:
+                        role_val = data['role']
+                        role_obj = Role.query.filter_by(name=role_val).first()
+                        if role_obj:
+                            user.role_id = role_obj.id
+
+            db.session.commit()
+            return employee_schema.dump(employee), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error updating employee {id}: {str(e)}")
+            return {"error": str(e)}, 500
+
+    @jwt_required()
+    @hr_required
+    def patch(self, id):
+        """Handle status updates (activate/deactivate)"""
         employee = Employee.query.get_or_404(id)
         data = request.get_json()
-        for key, value in data.items():
-            setattr(employee, key, value)
-        db.session.commit()
-        return employee_schema.dump(employee), 200
+        
+        if 'status' in data:
+            employee.status = data['status']
+            db.session.commit()
+            return employee_schema.dump(employee), 200
+        
+        return {'message': 'No valid fields to update'}, 400

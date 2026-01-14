@@ -54,7 +54,7 @@ def create_app(config_class=Config):
     from app.resources.departments import DepartmentList, DepartmentResource
     from app.resources.attendance import AttendanceList, ClockIn, ClockOut, PersonalAttendanceHistory
     from app.resources.leave import LeaveList, LeaveResource, LeaveApprove, LeaveReject, LeaveHistory
-    from app.resources.payroll import PayrollList, PayrollResource, PayrollCycles, PayrollReports
+    from app.resources.payroll import PayrollList, PayrollResource, PayrollCycles, PayrollReports, PersonalPayrollHistory
     from app.resources.analytics import DashboardStats
     from app.resources.notifications import NotificationList, NotificationResource
 
@@ -83,6 +83,7 @@ def create_app(config_class=Config):
     api.add_resource(PayrollResource, '/api/payroll/<int:id>')
     api.add_resource(PayrollCycles, '/api/payroll/cycles')
     api.add_resource(PayrollReports, '/api/payroll/reports')
+    api.add_resource(PersonalPayrollHistory, '/api/payroll/history')
     
     api.add_resource(DashboardStats, '/api/analytics/dashboard')
     

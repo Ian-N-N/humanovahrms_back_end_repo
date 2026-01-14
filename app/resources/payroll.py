@@ -33,14 +33,22 @@ class PayrollList(Resource):
             return {'error': 'cycle_id is required'}, 400
             
         cycle = PayrollCycle.query.get_or_404(cycle_id)
+        # If already processed, we clear old records to re-calculate
         if cycle.status == 'Processed':
-            return {'error': 'Payroll already processed for this cycle'}, 400
+             # Optional: log this action
+             Payroll.query.filter_by(cycle_id=cycle.id).delete()
+             # We can reset status temporarily or just proceed knowing we are updating
             
         # 1. Get all active employees
         employees = Employee.query.filter_by(status='Active').all()
         
         created_payrolls = []
+        created_payrolls = []
         for emp in employees:
+            # Skip if employee was hired after this cycle ended
+            if emp.hire_date and emp.hire_date > cycle.end_date:
+                continue
+
             salary = emp.basic_salary or 0
             # Calculate KES breakdown
             results = calculate_payroll_item(salary)
@@ -57,7 +65,7 @@ class PayrollList(Resource):
                 nhif=results['shif'], # Storing SHIF in nhif column
                 housing_levy=results['housing_levy'],
                 net_salary=results['net_salary'],
-                payment_date=datetime.utcnow().date(),
+                payment_date=cycle.end_date,  # Use cycle end date, not today's date
                 status='processed'
             )
             db.session.add(new_payroll)
@@ -75,6 +83,15 @@ class PayrollResource(Resource):
         payroll = Payroll.query.get_or_404(id)
         return payroll_schema.dump(payroll), 200
 
+    @jwt_required()
+    @hr_required
+    def delete(self, id):
+        """Delete a specific payroll record"""
+        payroll = Payroll.query.get_or_404(id)
+        db.session.delete(payroll)
+        db.session.commit()
+        return {'message': 'Payroll record deleted successfully'}, 200
+
 class PayrollCycles(Resource):
     @jwt_required()
     @hr_required
@@ -89,8 +106,9 @@ class PayrollCycles(Resource):
         try:
             new_cycle = PayrollCycle(
                 name=data['name'],
-                start_date=data['startDate'], # Frontend uses camelCase
-                end_date=data['endDate']
+                start_date=datetime.strptime(data['startDate'], '%Y-%m-%d').date(),
+                end_date=datetime.strptime(data['endDate'], '%Y-%m-%d').date(),
+                status='Active'  # Explicitly set to Active for new cycles
             )
             db.session.add(new_cycle)
             db.session.commit()
@@ -98,9 +116,22 @@ class PayrollCycles(Resource):
         except Exception as e:
             return {'error': str(e)}, 400
 
+
 class PayrollReports(Resource):
     @jwt_required()
     @hr_required
     def get(self):
         # Placeholder for reports
         return [], 200
+
+class PersonalPayrollHistory(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        employee = Employee.query.filter_by(user_id=user_id).first()
+        
+        if not employee:
+            return {'message': 'Employee record not found'}, 404
+            
+        payrolls = Payroll.query.filter_by(employee_id=employee.id).order_by(Payroll.payment_date.desc()).all()
+        return payroll_list_schema.dump(payrolls), 200
