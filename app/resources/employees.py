@@ -151,7 +151,13 @@ class EmployeeResource(Resource):
                  current_app.logger.info("JSON or other request detected.")
 
             # Explicit Mapping
-            if 'name' in data:
+            if 'first_name' in data:
+                employee.first_name = data['first_name']
+            if 'last_name' in data:
+                employee.last_name = data['last_name']
+            
+            # Fallback for old 'name' field
+            if 'name' in data and not ('first_name' in data or 'last_name' in data):
                 parts = data['name'].strip().split(' ', 1)
                 employee.first_name = parts[0]
                 if len(parts) > 1:
@@ -159,6 +165,8 @@ class EmployeeResource(Resource):
             
             if 'phone' in data:
                 employee.phone_number = data['phone']
+            elif 'phone_number' in data:
+                employee.phone_number = data['phone_number']
                 
             if 'status' in data:
                 employee.status = data['status']
@@ -175,7 +183,11 @@ class EmployeeResource(Resource):
             # Handle Image Upload for Update
             if file_storage:
                  from app.utils.cloudinary_utils import upload_image
-                 employee.profile_photo_url = upload_image(file_storage)
+                 new_url = upload_image(file_storage)
+                 current_app.logger.info(f"Cloudinary upload result: {new_url}")
+                 employee.profile_photo_url = new_url
+            elif 'profile_photo_url' in data:
+                 employee.profile_photo_url = data['profile_photo_url']
 
             # Handle Department (Lookup by name if string provided)
             if 'department' in data:
@@ -184,12 +196,14 @@ class EmployeeResource(Resource):
                  dept = Department.query.filter_by(name=dept_name).first()
                  if dept:
                      employee.department_id = dept.id
+            elif 'department_id' in data:
+                employee.department_id = data['department_id']
 
             # Pass through any other matching keys that are safe
-            safe_keys = ['profile_photo_url', 'hire_date', 'leave_balance']
-            for key in safe_keys:
-                if key in data:
-                    setattr(employee, key, data[key])
+            if 'hire_date' in data:
+                employee.hire_date = data['hire_date']
+            if 'leave_balance' in data:
+                employee.leave_balance = data['leave_balance']
 
             # NOTE: Email and Role are on User model, not Employee. 
             if employee.user_id and ('email' in data or 'role' in data):
@@ -204,7 +218,11 @@ class EmployeeResource(Resource):
                         if role_obj:
                             user.role_id = role_obj.id
 
+            current_app.logger.info(f"Saving employee {id}. Final Photo URL: {employee.profile_photo_url}")
             db.session.commit()
+            
+            # Refresh to get updated fields after commit
+            db.session.refresh(employee)
             return employee_schema.dump(employee), 200
             
         except Exception as e:

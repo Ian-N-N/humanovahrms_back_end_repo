@@ -35,6 +35,15 @@ def create_app(config_class=Config):
 
     api = Api(app)
 
+    # Configure Cloudinary globally
+    import cloudinary
+    cloudinary.config(
+        cloud_name = app.config.get('CLOUDINARY_CLOUD_NAME'),
+        api_key = app.config.get('CLOUDINARY_API_KEY'),
+        api_secret = app.config.get('CLOUDINARY_API_SECRET'),
+        secure=True
+    )
+
     # Global Error Handlers
     @app.errorhandler(404)
     def not_found(error):
