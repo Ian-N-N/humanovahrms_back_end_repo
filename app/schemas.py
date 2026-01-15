@@ -37,9 +37,29 @@ class EmployeeSchema(ma.SQLAlchemyAutoSchema):
     created_at = ma.DateTime(format='iso')
     updated_at = ma.DateTime(format='iso')
     name = ma.Method("get_name", dump_only=True)
+    department_name = ma.Method("get_department_name", dump_only=True)
+    supervisor_name = ma.Method("get_supervisor_name", dump_only=True)
 
     def get_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}"
+        # Handle cases where first/last might be missing
+        fn = getattr(obj, 'first_name', '') or ''
+        ln = getattr(obj, 'last_name', '') or ''
+        return f"{fn} {ln}".strip() or "Unnamed Employee"
+
+    def get_department_name(self, obj):
+        if hasattr(obj, 'department') and obj.department:
+            return getattr(obj.department, 'name', None)
+        return None
+
+    def get_supervisor_name(self, obj):
+        if hasattr(obj, 'supervisor') and obj.supervisor:
+            # Check if it's an instance or just the relationship descriptor
+            from sqlalchemy.orm.attributes import InstrumentedAttribute
+            if not isinstance(obj.supervisor, InstrumentedAttribute):
+                fn = getattr(obj.supervisor, 'first_name', '') or ''
+                ln = getattr(obj.supervisor, 'last_name', '') or ''
+                return f"{fn} {ln}".strip() or "Unnamed Supervisor"
+        return None
 
 class AttendanceSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -47,7 +67,6 @@ class AttendanceSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         include_fk = True
     
-    clock_in_time = ma.Method("get_clock_in_time")
     clock_in_time = ma.Method("get_clock_in_time")
     clock_out_time = ma.Method("get_clock_out_time")
     hours_worked = ma.Float()

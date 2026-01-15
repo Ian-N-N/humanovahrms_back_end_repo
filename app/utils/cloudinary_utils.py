@@ -16,12 +16,7 @@ def upload_image(file_obj, folder="profile_pics"):
         str: The secure URL of the uploaded image.
     """
     
-    # Configure Cloudinary
-    cloudinary.config(
-        cloud_name = current_app.config.get('CLOUDINARY_CLOUD_NAME'),
-        api_key = current_app.config.get('CLOUDINARY_API_KEY'),
-        api_secret = current_app.config.get('CLOUDINARY_API_SECRET')
-    )
+    # Cloudinary is now configured globally in app/__init__.py
 
     try:
         current_app.logger.info(f"Attempting Cloudinary upload to folder: {folder}")

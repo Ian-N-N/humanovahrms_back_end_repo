@@ -62,7 +62,7 @@ class PayrollList(Resource):
                 gross_salary=results['gross_salary'],
                 tax_paid=results['tax_paid'],
                 nssf=results['nssf'],
-                nhif=results['shif'], # Storing SHIF in nhif column
+                shif=results['shif'], # Storing SHIF in nhif column
                 housing_levy=results['housing_levy'],
                 net_salary=results['net_salary'],
                 payment_date=cycle.end_date,  # Use cycle end date, not today's date
