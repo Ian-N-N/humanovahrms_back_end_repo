@@ -40,6 +40,18 @@ diag_db_v2.py
 employees_check.py
 check_null_depts.py
 verify_role_fix.py
+p_*.py
+temp_*.py
+photo_*.py
+*_out.txt
+*_std.txt
+all_*.txt
+photo_*.txt
+v_photo.py
+p_diag.py
+temp_photo.py
+temp_verify_cloud.py
+
 
 # Logs
 *.log
