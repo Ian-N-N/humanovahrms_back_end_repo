@@ -24,7 +24,7 @@ class Payroll(db.Model):
     gross_salary = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     tax_paid = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     nssf = db.Column(db.Numeric(10, 2), nullable=False, default=0)
-    nhif = db.Column(db.Numeric(10, 2), nullable=False, default=0) # Now SHIF
+    shif = db.Column(db.Numeric(10, 2), nullable=False, default=0) # Now SHIF
     housing_levy = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     allowances = db.Column(db.JSON)
     deductions = db.Column(db.JSON)

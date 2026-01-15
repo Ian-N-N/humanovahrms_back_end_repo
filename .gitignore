@@ -17,7 +17,29 @@ debug_*.py
 test_*.py
 inspect_*.py
 check_*.py
+diag_*.py
+seed_*.py
+t_ser_*.py
+*_check.py
+*_diagnostic.py
+*_test.py
+v_*.py
+n_*.py
+db_*.py
+v_output.txt
+diag_output.txt
 reset_db.py
+seed_employees.py
+v_depts.py
+n_dept.py
+t_ser.py
+check_data.py
+db_check.py
+diag_db_now.py
+diag_db_v2.py
+employees_check.py
+check_null_depts.py
+verify_role_fix.py
 
 # Logs
 *.log

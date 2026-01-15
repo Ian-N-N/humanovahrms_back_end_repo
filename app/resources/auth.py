@@ -18,17 +18,34 @@ class UserList(Resource):
 class Register(Resource):
     def post(self):
         data = request.get_json()
-        if User.query.filter_by(email=data['email']).first():
+        
+        # Validation
+        email = data.get('email', '').lower().strip()
+        password = data.get('password', '')
+        
+        import re
+        # Email regex
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, email):
+            return {'message': 'Invalid email format'}, 400
+            
+        # Password complexity
+        if len(password) < 8:
+            return {'message': 'Password must be at least 8 characters long'}, 400
+        if not re.search(r'[A-Z]', password):
+            return {'message': 'Password must contain at least one uppercase letter'}, 400
+        if not re.search(r'[a-z]', password):
+            return {'message': 'Password must contain at least one lowercase letter'}, 400
+        if not re.search(r'[0-9]', password):
+            return {'message': 'Password must contain at least one number'}, 400
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            return {'message': 'Password must contain at least one special character'}, 400
+
+        if User.query.filter_by(email=email).first():
             return {'message': 'User already exists'}, 400
         
-        # Determine role from request
-        requested_role = data.get('role', 'employee').lower()
-        role_map = {
-            'hr': 'HR Manager',
-            'admin': 'Admin',
-            'employee': 'Employee'
-        }
-        role_name = role_map.get(requested_role, 'Employee')
+        # New Workflow: Public registration is EXCLUSIVELY for Organization Admins
+        role_name = 'Admin'
 
         role = Role.query.filter_by(name=role_name).first()
         if not role:
@@ -38,21 +55,22 @@ class Register(Resource):
             db.session.commit()
 
         new_user = User(
-            email=data['email'],
+            email=email,
             # Map 'username' from request, fallback to 'name'
-            username=data.get('username') or data.get('name', ''), 
-            password_hash=generate_password_hash(data['password']),
+            username=data.get('username') or data.get('name', 'Admin'), 
+            password_hash=generate_password_hash(password),
             role_id=role.id
         )
         db.session.add(new_user)
         db.session.commit()
 
-        return {'message': 'User created successfully'}, 201
+        return {'message': 'Admin account created successfully'}, 201
 
 class Login(Resource):
     def post(self):
         data = request.get_json()
-        user = User.query.filter_by(email=data['email']).first()
+        email = data.get('email', '').lower().strip()
+        user = User.query.filter_by(email=email).first()
 
         if user and check_password_hash(user.password_hash, data['password']):
             access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role.name})

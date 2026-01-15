@@ -1,10 +1,12 @@
-from flask import request
+from flask import request, current_app
 from flask_restful import Resource
-from app.models import Employee, User
+from app.models import Employee, User, Role
 from app import db
 from app.schemas import EmployeeSchema
 from app.middleware.auth import admin_required, hr_required
 from flask_jwt_extended import jwt_required
+from werkzeug.security import generate_password_hash
+from app.utils.email_utils import send_onboarding_email
 
 employee_schema = EmployeeSchema()
 employees_schema = EmployeeSchema(many=True)
@@ -42,6 +44,44 @@ class EmployeeList(Resource):
              file_storage = None
              current_app.logger.info("JSON request detected.")
         
+        # --- TALENT ONBOARDING LOGIC (Create User Account) ---
+        user_id = data.get('user_id')
+        create_account = data.get('create_account') == 'true' or data.get('create_account') is True
+        
+        account_email = data.get('account_email') # Work Email
+        personal_email = data.get('personal_email') # Email for notification
+        account_password = data.get('account_password')
+        account_role_name = data.get('account_role', 'Employee')
+
+        if create_account and account_email and account_password:
+            # Check if user already exists
+            if User.query.filter_by(email=account_email).first():
+                return {'message': f'Account with email {account_email} already exists'}, 400
+            
+            # Find Role
+            role = Role.query.filter_by(name=account_role_name).first()
+            if not role:
+                role = Role.query.filter_by(name='Employee').first()
+
+            # Create User
+            new_user = User(
+                email=account_email.lower().strip(),
+                username=data.get('first_name') or 'User',
+                password_hash=generate_password_hash(account_password),
+                role_id=role.id if role else 1
+            )
+            db.session.add(new_user)
+            db.session.flush() # Get user_id before commit
+            user_id = new_user.id
+            
+            # Send Notification
+            send_onboarding_email(
+                personal_email=personal_email or account_email,
+                work_email=account_email,
+                password=account_password,
+                name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+            )
+
         # Cast data types correctly
         from datetime import datetime
         hire_date_str = data.get('hire_date') or data.get('join_date') 
@@ -74,7 +114,7 @@ class EmployeeList(Resource):
             'job_title': data.get('job_title'),
             'basic_salary': basic_salary,
             'hire_date': hire_date,
-            'user_id': data.get('user_id')
+            'user_id': user_id
         }
         
         # Remove None values
@@ -91,7 +131,6 @@ class EmployeeResource(Resource):
         employee = Employee.query.get_or_404(id)
         return employee_schema.dump(employee), 200
 
-    @jwt_required()
     @jwt_required()
     @hr_required
     def put(self, id):
@@ -147,7 +186,7 @@ class EmployeeResource(Resource):
                      employee.department_id = dept.id
 
             # Pass through any other matching keys that are safe
-            safe_keys = ['profile_photo_url', 'hire_date']
+            safe_keys = ['profile_photo_url', 'hire_date', 'leave_balance']
             for key in safe_keys:
                 if key in data:
                     setattr(employee, key, data[key])

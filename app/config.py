@@ -16,3 +16,10 @@ class Config:
     CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', 'your_cloud_name')
     CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY', 'your_api_key')
     CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET', 'your_api_secret')
+    # Gmail SMTP Configuration
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'austineochieng101@gmail.com')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD') # 16-character App Password
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'austineochieng101@gmail.com')
