@@ -1,41 +1,52 @@
 import logging
-import resend
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 from flask import current_app
 
 logger = logging.getLogger(__name__)
 
 def send_email(target_email, subject, text_content, html_content):
     """
-    Sends an email using Resend API.
+    Sends an email using Brevo (formerly Sendinblue) API.
     """
-    resend_api_key = current_app.config.get('ECOHRMS')
-    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
+    brevo_api_key = current_app.config.get('BREVO_API_KEY')
+    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'austineochieng101@gmail.com')
 
-    if not resend_api_key:
-        logger.warning("ECOHRMS (Resend API Key) is missing. Email will NOT be sent.")
+    if not brevo_api_key:
+        logger.warning("BREVO_API_KEY is missing. Email will NOT be sent.")
         print(f"--- MOCK EMAIL --- \nTo: {target_email}\nSubject: {subject}\n-----------------")
         return True
 
     try:
-        resend.api_key = resend_api_key
-        
-        params = {
-            "from": sender_email,
-            "to": target_email,
-            "subject": subject,
-            "html": html_content,
-            "text": text_content
-        }
+        # Configure API key authorization
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = brevo_api_key
 
-        print(f"DEBUG: Attempting to send Resend email from {sender_email} to {target_email}")
-        email = resend.Emails.send(params)
+        # Create an instance of the API class
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+        # Define the transactional email
+        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+            to=[{"email": target_email}],
+            sender={"email": sender_email, "name": "HRMS Admin"},
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content
+        )
+
+        print(f"DEBUG: Attempting to send Brevo email from {sender_email} to {target_email}")
+        api_response = api_instance.send_transac_email(send_smtp_email)
         
-        logger.info(f"Email sent to {target_email} successfully. ID: {email.get('id')}")
-        print(f"DEBUG: Email sent successfully via Resend. ID: {email.get('id')}")
+        logger.info(f"Email sent to {target_email} successfully. ID: {api_response.message_id}")
+        print(f"DEBUG: Email sent successfully via Brevo. ID: {api_response.message_id}")
         return True
+    except ApiException as e:
+        logger.error(f"Brevo API Error: {str(e)}")
+        print(f"DEBUG: Brevo Error details: {str(e)}")
+        return False
     except Exception as e:
-        logger.error(f"Resend API Error: {str(e)}")
-        print(f"DEBUG: Resend Error details: {str(e)}")
+        logger.error(f"Unexpected Error sending email: {str(e)}")
+        print(f"DEBUG: Unexpected Error: {str(e)}")
         return False
 
 def send_onboarding_email(personal_email, work_email, password, name):
