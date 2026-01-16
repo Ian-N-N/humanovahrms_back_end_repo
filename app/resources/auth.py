@@ -2,8 +2,9 @@ from flask import request
 from flask_restful import Resource
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
-from app.models import User, Role
+from app.models import User, Role, Employee
 from app import db
+from app.utils.cloudinary_utils import upload_image
 from app.schemas import UserSchema
 
 user_schema = UserSchema()
@@ -17,7 +18,13 @@ class UserList(Resource):
 
 class Register(Resource):
     def post(self):
-        data = request.get_json()
+        # Handle Multipart or JSON
+        if request.mimetype == 'multipart/form-data':
+            data = request.form.to_dict()
+            file_storage = request.files.get('image')
+        else:
+            data = request.get_json() or {}
+            file_storage = None
         
         # Validation
         email = data.get('email', '').lower().strip()
@@ -62,6 +69,30 @@ class Register(Resource):
             role_id=role.id
         )
         db.session.add(new_user)
+        db.session.flush() # Get user ID
+        
+        # --- Handle Image Upload and Employee Creation ---
+        profile_photo_url = data.get('profile_photo_url')
+        if file_storage:
+             profile_photo_url = upload_image(file_storage)
+             
+        # Extract name parts
+        full_name = data.get('name', 'Admin').strip()
+        parts = full_name.split(' ', 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else "User"
+
+        # Create linked Employee record so the Admin has a profile
+        new_employee = Employee(
+            user_id=new_user.id,
+            first_name=first_name,
+            last_name=last_name,
+            profile_photo_url=profile_photo_url,
+            personal_email=email,
+            job_title="System Admin",
+            status="Active"
+        )
+        db.session.add(new_employee)
         db.session.commit()
 
         return {'message': 'Admin account created successfully'}, 201
