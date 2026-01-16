@@ -1,60 +1,52 @@
 import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 from flask import current_app
 
 logger = logging.getLogger(__name__)
 
 def send_email(target_email, subject, text_content, html_content):
     """
-    Base helper to send an email using configured SMTP.
+    Sends an email using Resend API.
     """
-    smtp_server = current_app.config.get('MAIL_SERVER')
-    smtp_port = current_app.config.get('MAIL_PORT')
-    username = current_app.config.get('MAIL_USERNAME')
-    mail_password = current_app.config.get('MAIL_PASSWORD')
-    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', username)
+    resend_api_key = current_app.config.get('ECOHRMS')
+    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
 
-    if not mail_password:
-        logger.warning("MAIL_PASSWORD is missing. Email will NOT be sent.")
+    if not resend_api_key:
+        logger.warning("ECOHRMS (Resend API Key) is missing. Email will NOT be sent.")
         print(f"--- MOCK EMAIL --- \nTo: {target_email}\nSubject: {subject}\n-----------------")
         return True
 
-    # Prepare message
-    message = MIMEMultipart("alternative")
-    message["Subject"] = subject
-    message["From"] = sender_email
-    message["To"] = target_email
-
-    message.attach(MIMEText(text_content, "plain"))
-    message.attach(MIMEText(html_content, "html"))
-
     try:
-        print(f"DEBUG: Attempting to send email from {sender_email} to {target_email}")
-        # Added 10 second timeout to prevent hanging on slow cloud SMTP connections
-        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
-            server.starttls()
-            server.login(username, mail_password)
-            server.sendmail(sender_email, target_email, message.as_string())
+        resend.api_key = resend_api_key
         
-        logger.info(f"Email sent to {target_email} successfully.")
-        print(f"DEBUG: Email sent successfully to {target_email}")
+        params = {
+            "from": sender_email,
+            "to": target_email,
+            "subject": subject,
+            "html": html_content,
+            "text": text_content
+        }
+
+        print(f"DEBUG: Attempting to send Resend email from {sender_email} to {target_email}")
+        email = resend.Emails.send(params)
+        
+        logger.info(f"Email sent to {target_email} successfully. ID: {email.get('id')}")
+        print(f"DEBUG: Email sent successfully via Resend. ID: {email.get('id')}")
         return True
     except Exception as e:
-        logger.error(f"SMTP Error: {str(e)}")
-        print(f"DEBUG: SMTP Error details: {str(e)}")
+        logger.error(f"Resend API Error: {str(e)}")
+        print(f"DEBUG: Resend Error details: {str(e)}")
         return False
 
 def send_onboarding_email(personal_email, work_email, password, name):
     subject = f"Welcome to the Team, {name}!"
-    text_content = f"Hello {name},\n\nYour HRMS account is ready.\nEmail: {work_email}\nPassword: {password}\n\nURL: http://localhost:5173/login"
+    text_content = f"Hello {name},\n\nYour HRMS account is ready.\nEmail: {work_email}\nPassword: {password}\n\nURL: https://humanovahrms-front-end-repo.vercel.app/login"
     html_content = f"""
     <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
         <h2 style="color: #2563eb;">Welcome to the Team, {name}!</h2>
         <p>Your HRMS account has been created successfully. You can now log in using the following credentials:</p>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Portal URL:</strong> <a href="http://localhost:5173/login">http://localhost:5173/login</a></p>
+            <p><strong>Portal URL:</strong> <a href="https://humanovahrms-front-end-repo.vercel.app/login">https://humanovahrms-front-end-repo.vercel.app/login</a></p>
             <p><strong>Work Email:</strong> {work_email}</p>
             <p><strong>Default Password:</strong> <code style="background: #e5e7eb; padding: 2px 4px; border-radius: 4px;">{password}</code></p>
         </div>
