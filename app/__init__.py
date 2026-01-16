@@ -98,5 +98,11 @@ def create_app(config_class=Config):
     
     api.add_resource(NotificationList, '/api/notifications')
     api.add_resource(NotificationResource, '/api/notifications/<int:id>')
+    
+    from app.resources.roles import RoleList
+    api.add_resource(RoleList, '/api/roles')
+
+    from app.resources.settings import SettingsResource
+    api.add_resource(SettingsResource, '/api/settings')
 
     return app
