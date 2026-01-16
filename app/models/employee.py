@@ -5,6 +5,7 @@ class Employee(db.Model):
     __tablename__ = 'employees'
 
     id = db.Column(db.Integer, primary_key=True)
+    employee_number = db.Column(db.String(20), unique=True, nullable=True)  # e.g., HR-001, ENG-002
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=True)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
@@ -20,6 +21,10 @@ class Employee(db.Model):
     leave_balance = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @property
+    def name(self):
+        return f"{self.first_name} {self.last_name}"
 
     subordinates = db.relationship('Employee', remote_side=[id], backref='supervisor', lazy=True)
     attendance = db.relationship('Attendance', backref='attendance_employee', lazy=True)

@@ -66,6 +66,7 @@ def create_app(config_class=Config):
     from app.resources.payroll import PayrollList, PayrollResource, PayrollCycles, PayrollReports, PersonalPayrollHistory
     from app.resources.analytics import DashboardStats
     from app.resources.notifications import NotificationList, NotificationResource
+    from app.resources.activity_logs import ActivityLogList
 
     api.add_resource(Register, '/api/auth/register')
     api.add_resource(Login, '/api/auth/login')
@@ -98,6 +99,8 @@ def create_app(config_class=Config):
     
     api.add_resource(NotificationList, '/api/notifications')
     api.add_resource(NotificationResource, '/api/notifications/<int:id>')
+    
+    api.add_resource(ActivityLogList, '/api/activity-logs')
     
     from app.resources.roles import RoleList
     api.add_resource(RoleList, '/api/roles')

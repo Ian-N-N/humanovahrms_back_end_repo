@@ -1,11 +1,12 @@
 from flask import request
 from flask_restful import Resource
 from sqlalchemy.exc import IntegrityError
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Department
 from app import db
 from app.schemas import DepartmentSchema
 from app.middleware.auth import admin_required, hr_required
+from app.utils.activity_logger import log_activity
 
 department_schema = DepartmentSchema()
 department_list_schema = DepartmentSchema(many=True)
@@ -39,6 +40,14 @@ class DepartmentList(Resource):
             )
             db.session.add(new_dept)
             db.session.commit()
+            
+            # Log Activity
+            try:
+                user_id = get_jwt_identity()
+                log_activity('Department Created', f"Created department '{new_dept.name}'", user_id)
+            except:
+                pass # Don't fail if log fails? log_activity has try/except usually.
+                
             return department_schema.dump(new_dept), 201
         except IntegrityError as e:
             print(f">>> CRITICAL: IntegrityError in Department POST: {str(e)}")
@@ -91,9 +100,20 @@ class DepartmentResource(Resource):
             return {'message': str(e)}, 400
         
     @jwt_required()
-    @hr_required
+    @admin_required
     def delete(self, id):
         dept = Department.query.get_or_404(id)
+        # Check if department has employees
+        if dept.employees and len(dept.employees) > 0:
+            return {'message': 'Cannot delete department with employees. Reassign or remove employees first.'}, 400
         db.session.delete(dept)
         db.session.commit()
-        return {'message': 'Department deleted'}, 200
+        
+        # Log Activity
+        try:
+             user_id = get_jwt_identity()
+             log_activity('Department Deleted', f"Deleted department '{dept.name}'", user_id)
+        except:
+             pass
+
+        return {'message': 'Department deleted successfully'}, 200

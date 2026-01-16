@@ -5,6 +5,7 @@ from app.models import Attendance, Employee
 from app import db
 from app.schemas import AttendanceSchema
 from datetime import datetime, date, timedelta
+from app.utils.activity_logger import log_activity
 
 attendance_schema = AttendanceSchema()
 attendance_list_schema = AttendanceSchema(many=True)
@@ -64,6 +65,10 @@ class ClockIn(Resource):
         )
         db.session.add(attendance)
         db.session.commit()
+        
+        # Log Activity
+        log_activity('Clock In', f"{employee.first_name} {employee.last_name} clocked in ({status})", user_id)
+        
         return attendance_schema.dump(attendance), 201
 
 class ClockOut(Resource):
@@ -100,6 +105,10 @@ class ClockOut(Resource):
                  attendance.overtime_hours = 0.0
             
         db.session.commit()
+        
+        # Log Activity
+        log_activity('Clock Out', f"{employee.first_name} {employee.last_name} clocked out. Worked: {attendance.hours_worked}hrs", user_id)
+        
         return attendance_schema.dump(attendance), 200
 
 class PersonalAttendanceHistory(Resource):

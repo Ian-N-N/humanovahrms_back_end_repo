@@ -123,6 +123,29 @@ class EmployeeList(Resource):
         
         new_employee = Employee(**mapped_data)
         db.session.add(new_employee)
+        db.session.flush()  # Get the employee ID
+        
+        # --- AUTO-GENERATE EMPLOYEE NUMBER ---
+        dept_prefix = "GEN"  # Default if no department
+        if new_employee.department_id:
+            from app.models import Department
+            dept = Department.query.get(new_employee.department_id)
+            if dept and dept.name:
+                # Create prefix from department name (first 2-3 chars uppercase)
+                name = dept.name.strip().upper()
+                if len(name) <= 3:
+                    dept_prefix = name
+                else:
+                    # Use first 3 consonants or first 3 chars
+                    consonants = ''.join([c for c in name if c not in 'AEIOU '])
+                    if len(consonants) >= 3:
+                        dept_prefix = consonants[:3]
+                    else:
+                        dept_prefix = name[:3]
+        
+        # Format: PREFIX-XXX (e.g., HR-001, ENG-042)
+        new_employee.employee_number = f"{dept_prefix}-{str(new_employee.id).zfill(3)}"
+        
         db.session.commit()
         return employee_schema.dump(new_employee), 201
 
@@ -247,3 +270,23 @@ class EmployeeResource(Resource):
             return employee_schema.dump(employee), 200
         
         return {'message': 'No valid fields to update'}, 400
+
+    @jwt_required()
+    @admin_required
+    def delete(self, id):
+        """Delete an employee (Admin only)"""
+        employee = Employee.query.get_or_404(id)
+        
+        # Also delete associated user account if exists
+        user_id = employee.user_id
+        
+        db.session.delete(employee)
+        
+        if user_id:
+            from app.models import User
+            user = User.query.get(user_id)
+            if user:
+                db.session.delete(user)
+        
+        db.session.commit()
+        return {'message': 'Employee deleted successfully'}, 200

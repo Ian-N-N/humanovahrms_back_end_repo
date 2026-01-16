@@ -7,4 +7,5 @@ from .leave import LeaveRequest
 from .payroll import Payroll, PayrollCycle
 from .notification import Notification
 from .setting import SystemSetting
+from .activity_log import ActivityLog
 
