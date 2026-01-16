@@ -20,26 +20,68 @@ class NotificationList(Resource):
     def post(self):
         """Allow HR/Admin to send notifications to employees"""
         from flask import request
+        from app.models import User, Role
+        
         data = request.get_json()
         
-        target_user_id = data.get('user_id')
-        msg = data.get('message')
-        ntype = data.get('type', 'system')
+        title = data.get('title')
+        message = data.get('message')
+        ntype = data.get('type', 'info')
+        recipient_type = data.get('recipientType', 'all')
+        recipient_id = data.get('recipientId')
 
-        if not target_user_id or not msg:
-            return {'error': 'user_id and message are required'}, 400
+        if not title or not message:
+            return {'error': 'title and message are required'}, 400
 
-        new_notification = Notification(
-            user_id=target_user_id,
-            type=ntype,
-            message=msg,
-            is_read=False
-        )
+        # Determine target users
+        target_users = []
         
-        db.session.add(new_notification)
+        if recipient_type == 'all':
+            # Send to all users
+            target_users = User.query.all()
+        elif recipient_type == 'role':
+            # Send to users with specific role
+            if not recipient_id:
+                return {'error': 'recipientId required for role targeting'}, 400
+            role = Role.query.filter_by(name=recipient_id.capitalize()).first()
+            if not role:
+                # Try common role names
+                role_map = {'hr': 'HR Manager', 'employee': 'Employee', 'admin': 'Admin'}
+                role_name = role_map.get(recipient_id.lower(), recipient_id)
+                role = Role.query.filter_by(name=role_name).first()
+            if role:
+                target_users = User.query.filter_by(role_id=role.id).all()
+        elif recipient_type == 'specific':
+            # Send to specific user
+            if not recipient_id:
+                return {'error': 'recipientId required for specific targeting'}, 400
+            # recipient_id might be employee_id, need to find user_id
+            from app.models import Employee
+            employee = Employee.query.get(recipient_id)
+            if employee and employee.user_id:
+                user = User.query.get(employee.user_id)
+                if user:
+                    target_users = [user]
+
+        if not target_users:
+            return {'error': 'No valid recipients found'}, 400
+
+        # Create notifications for all target users
+        created_count = 0
+        for user in target_users:
+            new_notification = Notification(
+                user_id=user.id,
+                title=title,
+                message=message,
+                type=ntype,
+                is_read=False
+            )
+            db.session.add(new_notification)
+            created_count += 1
+        
         db.session.commit()
         
-        return notification_schema.dump(new_notification), 201
+        return {'message': f'Notification sent to {created_count} user(s)'}, 201
 
 class NotificationResource(Resource):
     @jwt_required()

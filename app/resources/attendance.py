@@ -39,7 +39,7 @@ class ClockIn(Resource):
             employee_id=employee.id,
             clock_in=datetime.now(),
             date=today,
-            status='present' # Logic to determine late/present
+            status='Late' if datetime.now().time() > datetime.strptime("09:15", "%H:%M").time() else 'On Time'
         )
         db.session.add(attendance)
         db.session.commit()

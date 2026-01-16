@@ -127,6 +127,7 @@ class PayrollReports(Resource):
 class PersonalPayrollHistory(Resource):
     @jwt_required()
     def get(self):
+        from flask_jwt_extended import get_jwt_identity
         user_id = get_jwt_identity()
         employee = Employee.query.filter_by(user_id=user_id).first()
         
@@ -134,4 +135,12 @@ class PersonalPayrollHistory(Resource):
             return {'message': 'Employee record not found'}, 404
             
         payrolls = Payroll.query.filter_by(employee_id=employee.id).order_by(Payroll.payment_date.desc()).all()
-        return payroll_list_schema.dump(payrolls), 200
+        
+        try:
+            result = payroll_list_schema.dump(payrolls)
+            return result, 200
+        except Exception as e:
+            import traceback
+            print(f"ERROR in PersonalPayrollHistory: {str(e)}")
+            traceback.print_exc()
+            return {'message': f'Serialization error: {str(e)}'}, 500

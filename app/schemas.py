@@ -12,7 +12,12 @@ class DepartmentSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         include_fk = True
     
-    manager = ma.Nested('EmployeeSchema', dump_only=True)
+    manager = ma.Nested('EmployeeSchema', only=['id', 'name'], dump_only=True)
+    employee_count = ma.Method("get_employee_count", dump_only=True)
+    employees = ma.Nested('EmployeeSchema', many=True, only=['id', 'name', 'job_title', 'status', 'email'], dump_only=True)
+    
+    def get_employee_count(self, obj):
+        return len(obj.employees) if hasattr(obj, 'employees') and obj.employees else 0
 
 class UserSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -36,9 +41,12 @@ class EmployeeSchema(ma.SQLAlchemyAutoSchema):
     leave_balance = ma.Integer()
     created_at = ma.DateTime(format='iso')
     updated_at = ma.DateTime(format='iso')
+    personal_email = ma.String()
+    profile_photo_url = ma.String()
     name = ma.Method("get_name", dump_only=True)
     department_name = ma.Method("get_department_name", dump_only=True)
     supervisor_name = ma.Method("get_supervisor_name", dump_only=True)
+    email = ma.Method("get_email", dump_only=True)
 
     def get_name(self, obj):
         # Handle cases where first/last might be missing
@@ -61,6 +69,11 @@ class EmployeeSchema(ma.SQLAlchemyAutoSchema):
                 return f"{fn} {ln}".strip() or "Unnamed Supervisor"
         return None
 
+    def get_email(self, obj):
+        if hasattr(obj, 'user') and obj.user:
+            return getattr(obj.user, 'email', None)
+        return None
+
 class AttendanceSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Attendance
@@ -70,6 +83,7 @@ class AttendanceSchema(ma.SQLAlchemyAutoSchema):
     clock_in_time = ma.Method("get_clock_in_time")
     clock_out_time = ma.Method("get_clock_out_time")
     hours_worked = ma.Float()
+    employee = ma.Nested('EmployeeSchema', only=['id', 'name', 'job_title', 'profile_photo_url'], dump_only=True, attribute='attendance_employee')
 
     def get_clock_in_time(self, obj):
         return obj.clock_in.strftime("%I:%M %p") if obj.clock_in else "--:--"
@@ -85,9 +99,9 @@ class LeaveRequestSchema(ma.SQLAlchemyAutoSchema):
     
     start_date = ma.Date(format='%Y-%m-%d')
     end_date = ma.Date(format='%Y-%m-%d')
-    employee = ma.Nested(EmployeeSchema, only=["id", "name", "job_title"])
+    employee = ma.Nested(EmployeeSchema, only=["id", "name", "job_title"], attribute='leave_employee')
     days = ma.Method("get_days", dump_only=True)
-    user_id = ma.Function(lambda obj: obj.employee.user_id if obj.employee else None, dump_only=True)
+    user_id = ma.Function(lambda obj: obj.leave_employee.user_id if hasattr(obj, 'leave_employee') and obj.leave_employee else None, dump_only=True)
 
     def get_days(self, obj):
         if obj.start_date and obj.end_date:
@@ -108,12 +122,12 @@ class PayrollSchema(ma.SQLAlchemyAutoSchema):
         include_fk = True
     
     cycle = ma.Nested(PayrollCycleSchema, dump_only=True)
-    employee = ma.Nested(EmployeeSchema, only=["id", "name"], dump_only=True)
+    employee = ma.Nested(EmployeeSchema, only=["id", "name"], dump_only=True, attribute='payroll_employee')
     basic_salary = ma.Decimal(as_string=True)
     gross_salary = ma.Decimal(as_string=True)
     tax_paid = ma.Decimal(as_string=True)
     nssf = ma.Decimal(as_string=True)
-    nhif = ma.Decimal(as_string=True, attribute='nhif') # Keep attribute name for now
+    shif = ma.Decimal(as_string=True)
     housing_levy = ma.Decimal(as_string=True)
     net_salary = ma.Decimal(as_string=True)
 
