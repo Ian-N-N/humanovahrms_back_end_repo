@@ -31,8 +31,12 @@ def create_app(config_class=Config):
     migrate.init_app(app, db, render_as_batch=True)
     jwt.init_app(app)
     ma.init_app(app)
-    # Configure CORS to allow all origins for /api/* routes
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
+    # Configure CORS to allow Vercel and localhost
+    CORS(app, resources={r"/api/*": {
+        "origins": ["https://humanovahrms-front-end-repo.vercel.app", "http://localhost:5173"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }})
 
     api = Api(app)
 

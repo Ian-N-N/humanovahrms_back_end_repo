@@ -32,7 +32,8 @@ def send_email(target_email, subject, text_content, html_content):
 
     try:
         print(f"DEBUG: Attempting to send email from {sender_email} to {target_email}")
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
+        # Added 10 second timeout to prevent hanging on slow cloud SMTP connections
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
             server.starttls()
             server.login(username, mail_password)
             server.sendmail(sender_email, target_email, message.as_string())

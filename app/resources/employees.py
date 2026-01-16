@@ -74,13 +74,6 @@ class EmployeeList(Resource):
             db.session.flush() # Get user_id before commit
             user_id = new_user.id
             
-            # Send Notification
-            send_onboarding_email(
-                personal_email=personal_email or account_email,
-                work_email=account_email,
-                password=account_password,
-                name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
-            )
 
         # Cast data types correctly
         from datetime import datetime
@@ -147,6 +140,19 @@ class EmployeeList(Resource):
         new_employee.employee_number = f"{dept_prefix}-{str(new_employee.id).zfill(3)}"
         
         db.session.commit()
+
+        # Send Notification AFTER commit so slow email doesn't block DB
+        if create_account and account_email and account_password:
+             try:
+                 send_onboarding_email(
+                    personal_email=personal_email or account_email,
+                    work_email=account_email,
+                    password=account_password,
+                    name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+                )
+             except Exception as e:
+                 current_app.logger.error(f"Post-onboarding email failed: {str(e)}")
+
         return employee_schema.dump(new_employee), 201
 
 class EmployeeResource(Resource):
