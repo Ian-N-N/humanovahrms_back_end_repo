@@ -74,24 +74,17 @@ class Login(Resource):
 
         if user and check_password_hash(user.password_hash, data['password']):
             try:
-                print(f"Login success for {email}. Generating token...")
                 # Verify role exists
                 if not user.role:
-                     print("CRITICAL: User has no role assigned!")
                      return {'message': 'User role missing'}, 500
-                
-                print(f"User role: {user.role.name}")
                 
                 access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role.name})
                 refresh_token = create_refresh_token(identity=str(user.id))
                 
-                print("Tokens generated. Dumping user schema...")
                 try:
                     user_dump = user_schema.dump(user)
-                    print("User schema dumped successfully.")
-                except Exception as e:
-                    print(f"Schema Dump Error: {str(e)}")
-                    # Fallback if schema fails
+                except Exception:
+                    # Fallback if schema fails due to missing DB columns or other issues
                     user_dump = {
                         "id": user.id,
                         "email": user.email,
@@ -107,8 +100,6 @@ class Login(Resource):
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                print(f"Login Internal Error: {str(e)}")
                 return {'message': f'Internal Login Error: {str(e)}'}, 500
         
-        print(f"Login failed for {email}: Invalid credentials")
         return {'message': 'Invalid credentials'}, 401
