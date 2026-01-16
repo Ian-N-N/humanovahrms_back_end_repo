@@ -83,6 +83,7 @@ class AttendanceSchema(ma.SQLAlchemyAutoSchema):
     clock_in_time = ma.Method("get_clock_in_time")
     clock_out_time = ma.Method("get_clock_out_time")
     hours_worked = ma.Float()
+    overtime_hours = ma.Float()
     employee = ma.Nested('EmployeeSchema', only=['id', 'name', 'job_title', 'profile_photo_url'], dump_only=True, attribute='attendance_employee')
 
     def get_clock_in_time(self, obj):
@@ -136,3 +137,6 @@ class NotificationSchema(ma.SQLAlchemyAutoSchema):
         model = Notification
         load_instance = True
         include_fk = True
+
+    # Ensure created_at is serialized as ISO format with Z to indicate UTC
+    created_at = ma.Function(lambda obj: obj.created_at.isoformat() + 'Z' if obj.created_at else None)

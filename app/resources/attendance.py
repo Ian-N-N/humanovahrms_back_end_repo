@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Attendance, Employee
 from app import db
 from app.schemas import AttendanceSchema
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 attendance_schema = AttendanceSchema()
 attendance_list_schema = AttendanceSchema(many=True)
@@ -35,11 +35,32 @@ class ClockIn(Resource):
         if existing:
              return {'message': 'Already clocked in today'}, 400
 
+        # Fetch Shift Start Time from Settings (Default to 09:00 if not set)
+        from app.models.setting import SystemSetting
+        
+        setting = SystemSetting.query.filter_by(key='shift_start_time').first()
+        start_time_str = setting.value if setting else "09:00"
+        
+        # Parse start time
+        start_time = datetime.strptime(start_time_str, "%H:%M").time()
+        
+        # Add 15 minutes grace period
+        # Simple logic: Convert to minutes, add 15, convert back or compare
+        # Easier: compare if current time > start time + 15 mins
+        
+        # We need a robust comparison. Let's use full datetime for today
+        shift_start_dt = datetime.combine(today, start_time)
+        grace_period_limit = shift_start_dt + timedelta(minutes=15)
+        
+        current_dt = datetime.now()
+        
+        status = 'Late' if current_dt > grace_period_limit else 'On Time'
+
         attendance = Attendance(
             employee_id=employee.id,
-            clock_in=datetime.now(),
+            clock_in=current_dt,
             date=today,
-            status='Late' if datetime.now().time() > datetime.strptime("09:15", "%H:%M").time() else 'On Time'
+            status=status
         )
         db.session.add(attendance)
         db.session.commit()
@@ -64,6 +85,19 @@ class ClockOut(Resource):
         if attendance.clock_in:
             duration = attendance.clock_out - attendance.clock_in
             attendance.hours_worked = round(duration.total_seconds() / 3600, 2)
+            
+            # Calculate Overtime
+            from app.models.setting import SystemSetting
+            setting_end = SystemSetting.query.filter_by(key='shift_end_time').first()
+            end_time_str = setting_end.value if setting_end else "17:00"
+            shift_end_time = datetime.strptime(end_time_str, "%H:%M").time()
+            shift_end_dt = datetime.combine(today, shift_end_time)
+            
+            if attendance.clock_out > shift_end_dt:
+                ot_duration = attendance.clock_out - shift_end_dt
+                attendance.overtime_hours = round(ot_duration.total_seconds() / 3600, 2)
+            else:
+                 attendance.overtime_hours = 0.0
             
         db.session.commit()
         return attendance_schema.dump(attendance), 200
