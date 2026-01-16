@@ -20,8 +20,8 @@ def upload_image(file_obj, folder="profile_pics"):
 
     try:
         current_app.logger.info(f"Attempting Cloudinary upload to folder: {folder}")
-        # Upload the file
-        upload_result = cloudinary.uploader.upload(file_obj, folder=folder)
+        # Upload the file with a timeout (in seconds)
+        upload_result = cloudinary.uploader.upload(file_obj, folder=folder, timeout=10)
         
         url = upload_result.get('secure_url')
         current_app.logger.info(f"Upload successful. URL: {url}")
