@@ -1,5 +1,5 @@
 from app import ma
-from app.models import User, Employee, Department, Role, Attendance, LeaveRequest, Payroll, PayrollCycle, Notification
+from app.models import User, Employee, Department, Role, Attendance, LeaveRequest, Payroll, PayrollCycle, Notification, ActivityLog
 
 class RoleSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -140,3 +140,12 @@ class NotificationSchema(ma.SQLAlchemyAutoSchema):
 
     # Ensure created_at is serialized as ISO format with Z to indicate UTC
     created_at = ma.Function(lambda obj: obj.created_at.isoformat() + 'Z' if obj.created_at else None)
+
+class ActivityLogSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = ActivityLog
+        load_instance = True
+        include_fk = True
+
+    timestamp = ma.Function(lambda obj: obj.timestamp.isoformat() + 'Z' if obj.timestamp else None)
+    user_name = ma.Function(lambda obj: obj.user.username if obj.user else 'System')
