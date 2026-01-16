@@ -24,12 +24,22 @@ def upgrade():
     # with op.batch_alter_table('employees', schema=None) as batch_op:
     #     batch_op.create_unique_constraint(batch_op.f('uq_employees_user_id'), ['user_id'])
 
+    op.create_table('payroll_cycles',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=False),
+    sa.Column('start_date', sa.Date(), nullable=False),
+    sa.Column('end_date', sa.Date(), nullable=False),
+    sa.Column('status', sa.String(length=20), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+
     with op.batch_alter_table('payroll', schema=None) as batch_op:
         batch_op.add_column(sa.Column('cycle_id', sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column('gross_salary', sa.Numeric(precision=10, scale=2), nullable=False))
         batch_op.add_column(sa.Column('tax_paid', sa.Numeric(precision=10, scale=2), nullable=False))
         batch_op.add_column(sa.Column('nssf', sa.Numeric(precision=10, scale=2), nullable=False))
-        batch_op.add_column(sa.Column('nhif', sa.Numeric(precision=10, scale=2), nullable=False))
+        batch_op.add_column(sa.Column('shif', sa.Numeric(precision=10, scale=2), nullable=False))
         batch_op.add_column(sa.Column('housing_levy', sa.Numeric(precision=10, scale=2), nullable=False))
         batch_op.create_foreign_key(batch_op.f('fk_payroll_cycle_id_payroll_cycles'), 'payroll_cycles', ['cycle_id'], ['id'])
 
@@ -58,6 +68,8 @@ def downgrade():
         batch_op.drop_column('tax_paid')
         batch_op.drop_column('gross_salary')
         batch_op.drop_column('cycle_id')
+
+    op.drop_table('payroll_cycles')
 
     with op.batch_alter_table('employees', schema=None) as batch_op:
         batch_op.drop_constraint(batch_op.f('uq_employees_user_id'), type_='unique')
