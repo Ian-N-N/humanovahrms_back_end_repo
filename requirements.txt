@@ -13,3 +13,4 @@ sendgrid
 email-validator
 pytest
 pytest-cov
+gunicorn
