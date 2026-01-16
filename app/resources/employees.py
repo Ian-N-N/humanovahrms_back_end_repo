@@ -97,6 +97,20 @@ class EmployeeList(Resource):
             from app.utils.cloudinary_utils import upload_image
             profile_photo_url = upload_image(file_storage)
 
+        # Validate supervisor and department existence to prevent 500 FK crashes
+        if user_id:
+             if not User.query.get(user_id):
+                  return {'message': 'Invalid user account link'}, 400
+
+        if data.get('department_id'):
+            from app.models import Department
+            if not Department.query.get(data.get('department_id')):
+                return {'message': 'Selected department does not exist'}, 400
+
+        if data.get('supervisor_id'):
+            if not Employee.query.get(data.get('supervisor_id')):
+                return {'message': 'Selected supervisor does not exist'}, 400
+
         mapped_data = {
             'first_name': data.get('first_name'),
             'last_name': data.get('last_name'),
