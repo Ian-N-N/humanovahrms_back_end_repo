@@ -31,7 +31,8 @@ def create_app(config_class=Config):
     migrate.init_app(app, db, render_as_batch=True)
     jwt.init_app(app)
     ma.init_app(app)
-    cors.init_app(app)
+    # Configure CORS to allow all origins for /api/* routes
+    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
 
     api = Api(app)
 
