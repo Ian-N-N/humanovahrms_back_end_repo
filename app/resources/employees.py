@@ -58,10 +58,21 @@ class EmployeeList(Resource):
             if User.query.filter_by(email=account_email).first():
                 return {'message': f'Account with email {account_email} already exists'}, 400
             
-            # Find Role
+            # Find Role or Create if missing
             role = Role.query.filter_by(name=account_role_name).first()
             if not role:
-                role = Role.query.filter_by(name='Employee').first()
+                # Create the role dynamically if it's a valid standard role
+                if account_role_name in ['Employee', 'HR Manager', 'Admin']:
+                    role = Role(name=account_role_name, permissions={})
+                    db.session.add(role)
+                    db.session.flush()
+                else:
+                    # Fallback to Employee
+                    role = Role.query.filter_by(name='Employee').first()
+                    if not role:
+                        role = Role(name='Employee', permissions={})
+                        db.session.add(role)
+                        db.session.flush()
 
             # Create User
             new_user = User(

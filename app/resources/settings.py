@@ -8,7 +8,7 @@ class SettingsResource(Resource):
     @jwt_required()
     def get(self):
         settings = SystemSetting.query.all()
-        # Return as a simple dictionary: { 'company_name': 'Acme', 'shift_start': '09:00' }
+        # Return as a simple dictionary: { 'company_name': 'ecoHRMS', 'shift_start': '09:00' }
         return {s.key: s.value for s in settings}, 200
 
     @jwt_required()
