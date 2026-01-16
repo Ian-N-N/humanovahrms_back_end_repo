@@ -9,6 +9,7 @@ class Employee(db.Model):
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
     phone_number = db.Column(db.String(20))
+    personal_email = db.Column(db.String(255))
     profile_photo_url = db.Column(db.String(500))
     department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=True)
     supervisor_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
@@ -21,9 +22,9 @@ class Employee(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     subordinates = db.relationship('Employee', remote_side=[id], backref='supervisor', lazy=True)
-    attendance = db.relationship('Attendance', backref='employee', lazy=True)
-    leave_requests = db.relationship('LeaveRequest', backref='employee', lazy=True)
-    payroll_records = db.relationship('Payroll', backref='employee', lazy=True)
+    attendance = db.relationship('Attendance', backref='attendance_employee', lazy=True)
+    leave_requests = db.relationship('LeaveRequest', backref='leave_employee', lazy=True)
+    payroll_records = db.relationship('Payroll', backref='payroll_employee', lazy=True)
 
     def __repr__(self):
         return f'<Employee {self.first_name} {self.last_name}>'

@@ -108,6 +108,7 @@ class EmployeeList(Resource):
             'first_name': data.get('first_name'),
             'last_name': data.get('last_name'),
             'phone_number': data.get('phone_number') or data.get('phone'),
+            'personal_email': personal_email or data.get('personal_email'),
             'profile_photo_url': profile_photo_url,
             'department_id': data.get('department_id'),
             'supervisor_id': data.get('supervisor_id'),
@@ -167,6 +168,9 @@ class EmployeeResource(Resource):
                 employee.phone_number = data['phone']
             elif 'phone_number' in data:
                 employee.phone_number = data['phone_number']
+                
+            if 'personal_email' in data:
+                employee.personal_email = data['personal_email']
                 
             if 'status' in data:
                 employee.status = data['status']

@@ -1,0 +1,7 @@
+DEBUG: Database URI: sqlite:///hrms.db
+--- Diagnostics for Payroll History ---
+
+--- Route Verification ---
+Route: /api/attendance/history -> Endpoint: personalattendancehistory
+Route: /api/leave/history -> Endpoint: leavehistory
+Route: /api/payroll/history -> Endpoint: personalpayrollhistory

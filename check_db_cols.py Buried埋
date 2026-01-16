@@ -1,0 +1,12 @@
+from app import create_app, db
+from sqlalchemy import inspect
+import os
+
+app = create_app()
+with app.app_context():
+    inspector = inspect(db.engine)
+    if 'payroll' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('payroll')]
+        print(f"Columns in 'payroll' table: {columns}")
+    else:
+        print("Table 'payroll' not found!")
