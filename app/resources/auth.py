@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, current_app
 from flask_restful import Resource
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -26,7 +26,7 @@ class Register(Resource):
             data = request.get_json() or {}
             file_storage = None
         
-        # Validation
+        current_app.logger.info(f"Register attempt for: {data.get('email')}")
         email = data.get('email', '').lower().strip()
         password = data.get('password', '')
         
@@ -54,83 +54,100 @@ class Register(Resource):
         # New Workflow: Public registration is EXCLUSIVELY for Organization Admins
         role_name = 'Admin'
 
-        role = Role.query.filter_by(name=role_name).first()
-        if not role:
-            # Create role if it doesn't exist
-            role = Role(name=role_name, permissions={})
-            db.session.add(role)
+        try:
+            role = Role.query.filter_by(name=role_name).first()
+            if not role:
+                # Create role if it doesn't exist
+                role = Role(name=role_name, permissions={})
+                db.session.add(role)
+                db.session.commit()
+
+            new_user = User(
+                email=email,
+                # Map 'username' from request, fallback to 'name'
+                username=data.get('username') or data.get('name', 'Admin'), 
+                password_hash=generate_password_hash(password),
+                role_id=role.id
+            )
+            db.session.add(new_user)
+            db.session.flush() # Get user ID
+            
+            # --- Handle Image Upload and Employee Creation ---
+            profile_photo_url = data.get('profile_photo_url')
+            if file_storage:
+                 profile_photo_url = upload_image(file_storage)
+                 
+            # Extract name parts
+            full_name = data.get('name', 'Admin').strip()
+            parts = full_name.split(' ', 1)
+            first_name = parts[0]
+            last_name = parts[1] if len(parts) > 1 else "User"
+
+            # Create linked Employee record so the Admin has a profile
+            new_employee = Employee(
+                user_id=new_user.id,
+                first_name=first_name,
+                last_name=last_name,
+                profile_photo_url=profile_photo_url,
+                personal_email=email,
+                job_title="System Admin",
+                status="Active"
+            )
+            db.session.add(new_employee)
             db.session.commit()
 
-        new_user = User(
-            email=email,
-            # Map 'username' from request, fallback to 'name'
-            username=data.get('username') or data.get('name', 'Admin'), 
-            password_hash=generate_password_hash(password),
-            role_id=role.id
-        )
-        db.session.add(new_user)
-        db.session.flush() # Get user ID
-        
-        # --- Handle Image Upload and Employee Creation ---
-        profile_photo_url = data.get('profile_photo_url')
-        if file_storage:
-             profile_photo_url = upload_image(file_storage)
-             
-        # Extract name parts
-        full_name = data.get('name', 'Admin').strip()
-        parts = full_name.split(' ', 1)
-        first_name = parts[0]
-        last_name = parts[1] if len(parts) > 1 else "User"
-
-        # Create linked Employee record so the Admin has a profile
-        new_employee = Employee(
-            user_id=new_user.id,
-            first_name=first_name,
-            last_name=last_name,
-            profile_photo_url=profile_photo_url,
-            personal_email=email,
-            job_title="System Admin",
-            status="Active"
-        )
-        db.session.add(new_employee)
-        db.session.commit()
-
-        return {'message': 'Admin account created successfully'}, 201
+            return {'message': 'Admin account created successfully'}, 201
+        except Exception as e:
+            db.session.rollback()
+            import traceback
+            error_msg = f"Registration Error: {str(e)}"
+            current_app.logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return {'message': error_msg, 'detail': traceback.format_exc()}, 500
 
 class Login(Resource):
     def post(self):
-        data = request.get_json()
+        data = request.get_json() or {}
         email = data.get('email', '').lower().strip()
         user = User.query.filter_by(email=email).first()
 
-        if user and check_password_hash(user.password_hash, data['password']):
+        try:
+            if not user or not data.get('password') or not check_password_hash(user.password_hash, data['password']):
+                return {'message': 'Invalid credentials'}, 401
+
+            # Verify role exists
+            if not user.role:
+                 return {'message': 'User role missing'}, 500
+            
+            access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role.name})
+            refresh_token = create_refresh_token(identity=str(user.id))
+            
             try:
-                # Verify role exists
-                if not user.role:
-                     return {'message': 'User role missing'}, 500
-                
-                access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role.name})
-                refresh_token = create_refresh_token(identity=str(user.id))
-                
-                try:
-                    user_dump = user_schema.dump(user)
-                except Exception:
-                    # Fallback if schema fails due to missing DB columns or other issues
-                    user_dump = {
-                        "id": user.id,
-                        "email": user.email,
-                        "username": user.username,
-                        "role": {"name": user.role.name}
+                user_dump = user_schema.dump(user)
+            except Exception as e:
+                current_app.logger.error(f"UserSchema dump failed for {user.email}: {str(e)}")
+                # Enhanced fallback to ensure frontend still gets basic necessary data
+                user_dump = {
+                    "id": user.id,
+                    "email": user.email,
+                    "username": user.username,
+                    "role": {"name": user.role.name}
+                }
+                if user.employee:
+                    user_dump["employee"] = {
+                        "id": user.employee.id,
+                        "first_name": user.employee.first_name,
+                        "last_name": user.employee.last_name,
+                        "profile_photo_url": user.employee.profile_photo_url,
+                        "job_title": user.employee.job_title
                     }
 
-                return {
-                    'access_token': access_token,
-                    'refresh_token': refresh_token,
-                    'user': user_dump
-                }, 200
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                return {'message': f'Internal Login Error: {str(e)}'}, 500
-        
-        return {'message': 'Invalid credentials'}, 401
+            return {
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': user_dump
+            }, 200
+        except Exception as e:
+            import traceback
+            error_msg = f"Internal Login Error for {email}: {str(e)}"
+            current_app.logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return {'message': error_msg, 'detail': traceback.format_exc()}, 500

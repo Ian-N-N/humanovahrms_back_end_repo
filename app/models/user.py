@@ -13,7 +13,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    employee = db.relationship('Employee', backref='user', uselist=False, lazy=True)
+    employee = db.relationship('Employee', backref='user', uselist=False, lazy=True, cascade="all, delete-orphan")
     notifications = db.relationship('Notification', backref='user', lazy=True)
 
     def __repr__(self):
