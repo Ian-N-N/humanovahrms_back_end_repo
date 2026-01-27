@@ -27,9 +27,9 @@ class Employee(db.Model):
         return f"{self.first_name} {self.last_name}"
 
     subordinates = db.relationship('Employee', remote_side=[id], backref='supervisor', lazy=True)
-    attendance = db.relationship('Attendance', backref='attendance_employee', lazy=True)
-    leave_requests = db.relationship('LeaveRequest', backref='leave_employee', lazy=True)
-    payroll_records = db.relationship('Payroll', backref='payroll_employee', lazy=True)
+    attendance = db.relationship('Attendance', backref='attendance_employee', lazy=True, cascade="all, delete-orphan")
+    leave_requests = db.relationship('LeaveRequest', backref='leave_employee', lazy=True, cascade="all, delete-orphan")
+    payroll_records = db.relationship('Payroll', backref='payroll_employee', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Employee {self.first_name} {self.last_name}>'

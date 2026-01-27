@@ -5,9 +5,19 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev_secret_key')
-    # Handle Render's DATABASE_URL which often starts with postgres:// (incompatible with newer SQLAlchemy)
-    _db_url = os.getenv('DATABASE_URL') or os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///hrms.db')
-    if _db_url.startswith("postgres://"):
+    basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    
+    _db_url = os.getenv('DATABASE_URL')
+    
+    # If no URL provided or it's a relative SQLite path, make it absolute
+    if not _db_url:
+        _db_url = f"sqlite:///{os.path.join(basedir, 'instance', 'hrms.db')}"
+    elif _db_url.startswith("sqlite:///") and not _db_url.startswith("sqlite:////"):
+        # Convert relative sqlite:///path to absolute
+        rel_path = _db_url.replace("sqlite:///", "")
+        _db_url = f"sqlite:///{os.path.join(basedir, rel_path)}"
+    
+    if _db_url and _db_url.startswith("postgres://"):
         _db_url = _db_url.replace("postgres://", "postgresql://", 1)
     
     SQLALCHEMY_DATABASE_URI = _db_url

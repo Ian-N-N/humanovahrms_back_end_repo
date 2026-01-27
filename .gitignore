@@ -43,6 +43,20 @@ verify_role_fix.py
 p_*.py
 temp_*.py
 photo_*.py
+add_*.py
+cleanup_*.py
+create_*.py
+data_*.py
+extract_*.py
+find_*.py
+fix_*.py
+list_*.py
+module_*.py
+read_*.py
+roles_*.py
+simulate_*.py
+solve_*.py
+work_*.py
 *_out.txt
 *_std.txt
 all_*.txt
@@ -51,6 +65,7 @@ v_photo.py
 p_diag.py
 temp_photo.py
 temp_verify_cloud.py
+*.txt
 
 
 # Logs
