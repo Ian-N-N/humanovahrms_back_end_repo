@@ -66,6 +66,7 @@ p_diag.py
 temp_photo.py
 temp_verify_cloud.py
 *.txt
+!requirements.txt
 
 
 # Logs
